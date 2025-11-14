@@ -7,7 +7,7 @@ Features: Multi-tab editing, live preview, syntax highlighting
 import sys
 import os
 import tkinter as tk
-from tkinter import ttk, messagebox, filedialog
+from tkinter import ttk, messagebox, filedialog, colorchooser
 import json
 from datetime import datetime
 import re
@@ -15,21 +15,49 @@ import re
 # Settings file for persistent last folder
 SETTINGS_FILE = os.path.expanduser("~/.markdown_editor_pro.json")
 
+# Default settings
+DEFAULT_SETTINGS = {
+    'last_folder': os.path.expanduser("~"),
+    'editor_bg': '#1e1e1e',
+    'editor_fg': '#d4d4d4',
+    'editor_font_size': 13,
+    'editor_font_family': 'Menlo',
+    'preview_bg': '#1e1e1e',
+    'preview_fg': '#d4d4d4',
+    'preview_font_size': 12,
+    'preview_font_family': 'Arial',
+    'md_h1_color': '#89b4fa',
+    'md_h2_color': '#89b4fa',
+    'md_h3_color': '#89b4fa',
+    'md_h4_color': '#89b4fa',
+    'md_bold_color': '#fab387',
+    'md_italic_color': '#94e2d5',
+    'md_code_color': '#f38ba8',
+    'md_code_bg': '#2b2b2b',
+    'md_link_color': '#89b4fa',
+    'md_list_color': '#f9e2af',
+    'md_blockquote_color': '#a6adc8',
+    'toolbar_bg': '#3c3c3c',
+    'button_bg': '#404040',
+}
+
 def load_settings():
     """Load settings from file"""
+    settings = DEFAULT_SETTINGS.copy()
     if os.path.exists(SETTINGS_FILE):
         try:
             with open(SETTINGS_FILE, 'r') as f:
-                return json.load(f)
+                saved = json.load(f)
+                settings.update(saved)
         except:
             pass
-    return {}
+    return settings
 
 def save_settings(settings):
     """Save settings to file"""
     try:
         with open(SETTINGS_FILE, 'w') as f:
-            json.dump(settings, f)
+            json.dump(settings, f, indent=2)
     except:
         pass
 
@@ -165,9 +193,10 @@ def markdown_to_html(markdown_text):
 class MarkdownTab:
     """Individual Markdown editing tab"""
 
-    def __init__(self, parent, tab_id, on_content_changed=None):
+    def __init__(self, parent, tab_id, settings=None, on_content_changed=None):
         self.parent = parent
         self.tab_id = tab_id
+        self.settings = settings or DEFAULT_SETTINGS.copy()
         self.on_content_changed = on_content_changed
         self.file_path = None
         self.modified = False
@@ -192,10 +221,10 @@ class MarkdownTab:
         editor_frame.pack(fill='both', expand=True, padx=5, pady=5)
 
         self.text = tk.Text(editor_frame,
-                           bg='#1e1e1e',
-                           fg='#d4d4d4',
+                           bg=self.settings['editor_bg'],
+                           fg=self.settings['editor_fg'],
                            insertbackground='white',
-                           font=('Menlo', 13),
+                           font=(self.settings['editor_font_family'], self.settings['editor_font_size']),
                            wrap='word',
                            bd=0,
                            highlightthickness=0)
@@ -225,18 +254,21 @@ class MarkdownTab:
     def setup_syntax_highlighting(self):
         """Setup Markdown syntax highlighting"""
         # Configure tags
-        self.text.tag_config('h1', foreground='#89b4fa', font=('Menlo', 18, 'bold'))
-        self.text.tag_config('h2', foreground='#89b4fa', font=('Menlo', 16, 'bold'))
-        self.text.tag_config('h3', foreground='#89b4fa', font=('Menlo', 14, 'bold'))
-        self.text.tag_config('h4', foreground='#89b4fa', font=('Menlo', 13, 'bold'))
-        self.text.tag_config('h5', foreground='#89b4fa', font=('Menlo', 13, 'bold'))
-        self.text.tag_config('h6', foreground='#89b4fa', font=('Menlo', 13, 'bold'))
-        self.text.tag_config('bold', foreground='#fab387', font=('Menlo', 13, 'bold'))
-        self.text.tag_config('italic', foreground='#94e2d5', font=('Menlo', 13, 'italic'))
-        self.text.tag_config('code', foreground='#f38ba8', background='#2b2b2b')
-        self.text.tag_config('link', foreground='#89b4fa', underline=True)
-        self.text.tag_config('list', foreground='#f9e2af')
-        self.text.tag_config('blockquote', foreground='#a6adc8')
+        font_family = self.settings['editor_font_family']
+        font_size = self.settings['editor_font_size']
+
+        self.text.tag_config('h1', foreground=self.settings['md_h1_color'], font=(font_family, font_size+5, 'bold'))
+        self.text.tag_config('h2', foreground=self.settings['md_h2_color'], font=(font_family, font_size+3, 'bold'))
+        self.text.tag_config('h3', foreground=self.settings['md_h3_color'], font=(font_family, font_size+1, 'bold'))
+        self.text.tag_config('h4', foreground=self.settings['md_h4_color'], font=(font_family, font_size, 'bold'))
+        self.text.tag_config('h5', foreground=self.settings['md_h1_color'], font=(font_family, font_size, 'bold'))
+        self.text.tag_config('h6', foreground=self.settings['md_h1_color'], font=(font_family, font_size, 'bold'))
+        self.text.tag_config('bold', foreground=self.settings['md_bold_color'], font=(font_family, font_size, 'bold'))
+        self.text.tag_config('italic', foreground=self.settings['md_italic_color'], font=(font_family, font_size, 'italic'))
+        self.text.tag_config('code', foreground=self.settings['md_code_color'], background=self.settings['md_code_bg'])
+        self.text.tag_config('link', foreground=self.settings['md_link_color'], underline=True)
+        self.text.tag_config('list', foreground=self.settings['md_list_color'])
+        self.text.tag_config('blockquote', foreground=self.settings['md_blockquote_color'])
 
         self.text.bind('<KeyRelease>', self.highlight_syntax)
 
@@ -394,12 +426,28 @@ class MarkdownTab:
         except:
             self.text.insert(tk.INSERT, "[text](url)")
 
+    def apply_settings(self, settings):
+        """Apply new settings to the editor"""
+        self.settings = settings
+
+        # Update text widget colors and font
+        self.text.config(
+            bg=settings['editor_bg'],
+            fg=settings['editor_fg'],
+            font=(settings['editor_font_family'], settings['editor_font_size'])
+        )
+
+        # Reapply syntax highlighting with new colors
+        self.setup_syntax_highlighting()
+        self.highlight_syntax()
+
 
 class PreviewPanel:
     """HTML preview panel for markdown"""
 
-    def __init__(self, parent):
+    def __init__(self, parent, settings=None):
         self.parent = parent
+        self.settings = settings or DEFAULT_SETTINGS.copy()
         self.container = tk.Frame(parent, bg='#2b2b2b')
 
         # Header
@@ -414,9 +462,9 @@ class PreviewPanel:
         preview_frame.pack(fill='both', expand=True, padx=5, pady=5)
 
         self.preview = tk.Text(preview_frame,
-                              bg='#1e1e1e',
-                              fg='#d4d4d4',
-                              font=('Arial', 12),
+                              bg=self.settings['preview_bg'],
+                              fg=self.settings['preview_fg'],
+                              font=(self.settings['preview_font_family'], self.settings['preview_font_size']),
                               wrap='word',
                               bd=0,
                               highlightthickness=0,
@@ -434,15 +482,22 @@ class PreviewPanel:
         self.preview.config(yscrollcommand=vsb.set)
 
         # Configure tags for styled preview
-        self.preview.tag_config('h1', foreground='#89b4fa', font=('Arial', 24, 'bold'))
-        self.preview.tag_config('h2', foreground='#89b4fa', font=('Arial', 20, 'bold'))
-        self.preview.tag_config('h3', foreground='#89b4fa', font=('Arial', 16, 'bold'))
-        self.preview.tag_config('h4', foreground='#89b4fa', font=('Arial', 14, 'bold'))
-        self.preview.tag_config('bold', foreground='#fab387', font=('Arial', 12, 'bold'))
-        self.preview.tag_config('italic', foreground='#94e2d5', font=('Arial', 12, 'italic'))
-        self.preview.tag_config('code', foreground='#f38ba8', background='#2b2b2b', font=('Menlo', 11))
-        self.preview.tag_config('link', foreground='#89b4fa', underline=True)
-        self.preview.tag_config('blockquote', foreground='#a6adc8', lmargin1=20, lmargin2=20)
+        self.configure_preview_tags()
+
+    def configure_preview_tags(self):
+        """Configure preview text tags with current settings"""
+        font_family = self.settings['preview_font_family']
+        font_size = self.settings['preview_font_size']
+
+        self.preview.tag_config('h1', foreground=self.settings['md_h1_color'], font=(font_family, font_size+12, 'bold'))
+        self.preview.tag_config('h2', foreground=self.settings['md_h2_color'], font=(font_family, font_size+8, 'bold'))
+        self.preview.tag_config('h3', foreground=self.settings['md_h3_color'], font=(font_family, font_size+4, 'bold'))
+        self.preview.tag_config('h4', foreground=self.settings['md_h4_color'], font=(font_family, font_size+2, 'bold'))
+        self.preview.tag_config('bold', foreground=self.settings['md_bold_color'], font=(font_family, font_size, 'bold'))
+        self.preview.tag_config('italic', foreground=self.settings['md_italic_color'], font=(font_family, font_size, 'italic'))
+        self.preview.tag_config('code', foreground=self.settings['md_code_color'], background=self.settings['md_code_bg'], font=('Menlo', font_size-1))
+        self.preview.tag_config('link', foreground=self.settings['md_link_color'], underline=True)
+        self.preview.tag_config('blockquote', foreground=self.settings['md_blockquote_color'], lmargin1=20, lmargin2=20)
 
     def update_preview(self, markdown_text):
         """Update preview with markdown content"""
@@ -518,6 +573,183 @@ class PreviewPanel:
             # Regular character
             self.preview.insert(tk.END, line[pos])
             pos += 1
+
+    def apply_settings(self, settings):
+        """Apply new settings to the preview panel"""
+        self.settings = settings
+
+        # Update preview widget colors and font
+        self.preview.config(
+            bg=settings['preview_bg'],
+            fg=settings['preview_fg'],
+            font=(settings['preview_font_family'], settings['preview_font_size'])
+        )
+
+        # Reconfigure tags with new colors
+        self.configure_preview_tags()
+
+
+class SettingsDialog:
+    """Settings dialog for customizing colors and fonts"""
+
+    def __init__(self, parent, settings, on_apply):
+        self.parent = parent
+        self.settings = settings.copy()
+        self.on_apply = on_apply
+
+        self.dialog = tk.Toplevel(parent)
+        self.dialog.title("Settings")
+        self.dialog.geometry("600x700")
+        self.dialog.configure(bg='#2b2b2b')
+
+        # Make modal
+        self.dialog.transient(parent)
+        self.dialog.grab_set()
+
+        self.create_widgets()
+
+    def create_widgets(self):
+        """Create settings UI"""
+        # Create canvas with scrollbar
+        canvas = tk.Canvas(self.dialog, bg='#2b2b2b', highlightthickness=0)
+        scrollbar = ttk.Scrollbar(self.dialog, orient="vertical", command=canvas.yview)
+        scrollable_frame = tk.Frame(canvas, bg='#2b2b2b')
+
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        # Editor Settings
+        self.create_section(scrollable_frame, "Editor Settings")
+        self.create_color_option(scrollable_frame, "Background Color", 'editor_bg')
+        self.create_color_option(scrollable_frame, "Text Color", 'editor_fg')
+        self.create_font_size_option(scrollable_frame, "Font Size", 'editor_font_size')
+
+        # Preview Settings
+        self.create_section(scrollable_frame, "Preview Settings")
+        self.create_color_option(scrollable_frame, "Background Color", 'preview_bg')
+        self.create_color_option(scrollable_frame, "Text Color", 'preview_fg')
+        self.create_font_size_option(scrollable_frame, "Font Size", 'preview_font_size')
+
+        # Markdown Syntax Colors
+        self.create_section(scrollable_frame, "Markdown Syntax Colors")
+        self.create_color_option(scrollable_frame, "Headers (H1-H4)", 'md_h1_color')
+        self.create_color_option(scrollable_frame, "Bold Text", 'md_bold_color')
+        self.create_color_option(scrollable_frame, "Italic Text", 'md_italic_color')
+        self.create_color_option(scrollable_frame, "Code Text", 'md_code_color')
+        self.create_color_option(scrollable_frame, "Code Background", 'md_code_bg')
+        self.create_color_option(scrollable_frame, "Links", 'md_link_color')
+        self.create_color_option(scrollable_frame, "Lists", 'md_list_color')
+        self.create_color_option(scrollable_frame, "Blockquotes", 'md_blockquote_color')
+
+        canvas.pack(side="left", fill="both", expand=True, padx=10, pady=10)
+        scrollbar.pack(side="right", fill="y")
+
+        # Buttons
+        button_frame = tk.Frame(self.dialog, bg='#2b2b2b')
+        button_frame.pack(fill='x', padx=10, pady=10)
+
+        tk.Button(button_frame, text="Reset to Defaults", bg='#404040', fg='white',
+                 padx=10, pady=5, command=self.reset_defaults).pack(side='left', padx=5)
+
+        tk.Button(button_frame, text="Cancel", bg='#404040', fg='white',
+                 padx=10, pady=5, command=self.dialog.destroy).pack(side='right', padx=5)
+
+        tk.Button(button_frame, text="Apply", bg='#50fa7b', fg='black',
+                 padx=10, pady=5, command=self.apply_settings).pack(side='right', padx=5)
+
+    def create_section(self, parent, title):
+        """Create a section header"""
+        frame = tk.Frame(parent, bg='#2b2b2b')
+        frame.pack(fill='x', pady=(15, 5))
+
+        tk.Label(frame, text=title, bg='#2b2b2b', fg='#89b4fa',
+                font=('Arial', 12, 'bold')).pack(anchor='w')
+
+        # Separator
+        sep = tk.Frame(frame, bg='#404040', height=2)
+        sep.pack(fill='x', pady=5)
+
+    def create_color_option(self, parent, label, key):
+        """Create a color picker option"""
+        frame = tk.Frame(parent, bg='#2b2b2b')
+        frame.pack(fill='x', pady=5)
+
+        tk.Label(frame, text=label, bg='#2b2b2b', fg='#d4d4d4',
+                font=('Arial', 10), width=20, anchor='w').pack(side='left')
+
+        color_frame = tk.Frame(frame, bg=self.settings[key], width=30, height=20,
+                              relief='solid', borderwidth=1)
+        color_frame.pack(side='left', padx=10)
+
+        entry = tk.Entry(frame, bg='#1e1e1e', fg='#d4d4d4', width=10,
+                        insertbackground='white')
+        entry.insert(0, self.settings[key])
+        entry.pack(side='left', padx=5)
+
+        def pick_color():
+            color = colorchooser.askcolor(initialcolor=self.settings[key])
+            if color[1]:
+                self.settings[key] = color[1]
+                entry.delete(0, tk.END)
+                entry.insert(0, color[1])
+                color_frame.configure(bg=color[1])
+
+        def update_from_entry(event=None):
+            try:
+                new_color = entry.get()
+                if new_color.startswith('#') and len(new_color) == 7:
+                    self.settings[key] = new_color
+                    color_frame.configure(bg=new_color)
+            except:
+                pass
+
+        entry.bind('<Return>', update_from_entry)
+        entry.bind('<FocusOut>', update_from_entry)
+
+        tk.Button(frame, text="Choose", bg='#404040', fg='white',
+                 padx=8, pady=2, command=pick_color).pack(side='left')
+
+    def create_font_size_option(self, parent, label, key):
+        """Create a font size spinner"""
+        frame = tk.Frame(parent, bg='#2b2b2b')
+        frame.pack(fill='x', pady=5)
+
+        tk.Label(frame, text=label, bg='#2b2b2b', fg='#d4d4d4',
+                font=('Arial', 10), width=20, anchor='w').pack(side='left')
+
+        spinbox = tk.Spinbox(frame, from_=8, to=32, bg='#1e1e1e', fg='#d4d4d4',
+                            width=5, insertbackground='white',
+                            textvariable=tk.IntVar(value=self.settings[key]))
+        spinbox.delete(0, tk.END)
+        spinbox.insert(0, self.settings[key])
+        spinbox.pack(side='left', padx=10)
+
+        def update_size(event=None):
+            try:
+                self.settings[key] = int(spinbox.get())
+            except:
+                pass
+
+        spinbox.bind('<Return>', update_size)
+        spinbox.bind('<FocusOut>', update_size)
+
+    def reset_defaults(self):
+        """Reset all settings to defaults"""
+        if messagebox.askyesno("Reset Settings", "Reset all settings to defaults?"):
+            self.settings = DEFAULT_SETTINGS.copy()
+            self.dialog.destroy()
+            # Recreate dialog with defaults
+            SettingsDialog(self.parent, self.settings, self.on_apply)
+
+    def apply_settings(self):
+        """Apply settings and close dialog"""
+        self.on_apply(self.settings)
+        self.dialog.destroy()
 
 
 class MarkdownEditorPro:
@@ -596,6 +828,7 @@ class MarkdownEditorPro:
         create_button(toolbar, "ITALIC", self.insert_italic)
         create_button(toolbar, "CODE", self.insert_code)
         create_button(toolbar, "LINK", self.insert_link)
+        create_button(toolbar, "SETTINGS", self.open_settings)
 
         # Toggle preview button
         self.preview_toggle_btn = create_button(toolbar, "PREVIEW ▼", self.toggle_preview)
@@ -637,7 +870,7 @@ class MarkdownEditorPro:
         self.notebook.bind('<Button-3>', self.on_tab_right_click)
 
         # Right panel - Preview
-        self.preview_panel = PreviewPanel(self.root)
+        self.preview_panel = PreviewPanel(self.root, self.settings)
 
         # Add panels to paned window
         self.main_paned.add(left_panel, minsize=400)
@@ -671,7 +904,7 @@ class MarkdownEditorPro:
         tab_id = self.tab_counter
         tab_name = f"Untitled {tab_id}"
 
-        tab = MarkdownTab(self.notebook, tab_id, on_content_changed=self.on_tab_modified)
+        tab = MarkdownTab(self.notebook, tab_id, self.settings, on_content_changed=self.on_tab_modified)
 
         self.tabs[tab_id] = {
             'tab': tab,
@@ -899,6 +1132,27 @@ class MarkdownEditorPro:
         current_tab = self.get_current_tab()
         if current_tab:
             current_tab.insert_link()
+
+    def open_settings(self):
+        """Open settings dialog"""
+        SettingsDialog(self.root, self.settings, self.apply_settings)
+
+    def apply_settings(self, new_settings):
+        """Apply new settings"""
+        self.settings = new_settings
+        save_settings(self.settings)
+
+        # Apply to all existing tabs
+        for tab_id, tab_data in self.tabs.items():
+            tab = tab_data['tab']
+            tab.apply_settings(self.settings)
+
+        # Apply to preview panel
+        self.preview_panel.apply_settings(self.settings)
+
+        # Update status
+        self.status_label.config(text="Settings applied", fg='#50fa7b')
+        self.root.after(2000, lambda: self.status_label.config(text=""))
 
     def run(self):
         """Start the application"""
