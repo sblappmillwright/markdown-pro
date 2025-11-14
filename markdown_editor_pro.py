@@ -643,10 +643,10 @@ class MarkdownEditorPro:
         self.main_paned.add(left_panel, minsize=400)
         self.main_paned.add(self.preview_panel.container, minsize=300)
 
-        # Set initial sash position
+        # Set initial sash position (35% editor, 65% preview)
         self.root.update_idletasks()
         total_width = self.main_paned.winfo_width()
-        self.main_paned.sash_place(0, total_width // 2, 1)
+        self.main_paned.sash_place(0, int(total_width * 0.35), 1)
 
         # Create first tab
         self.create_new_tab()
@@ -660,7 +660,7 @@ class MarkdownEditorPro:
         else:
             self.main_paned.add(self.preview_panel.container)
             total_width = self.main_paned.winfo_width()
-            self.main_paned.sash_place(0, total_width // 2, 1)
+            self.main_paned.sash_place(0, int(total_width * 0.35), 1)
             self.preview_toggle_btn.config(text="PREVIEW ▼")
             self.preview_visible = True
             self.update_preview()
